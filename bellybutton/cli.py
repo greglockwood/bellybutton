@@ -112,19 +112,16 @@ def open_python_files(filepaths):
 
 
 def get_git_modified(project_directory):
-    """Get all modified filepaths between current ref and origin/master."""
-    subprocess.check_call(
-        'git -C "{}" fetch origin'.format(project_directory),
-        shell=True
-    )
-    diff_cmd = 'git -C "{}" diff {{}} --name-only'.format(os.path.abspath(project_directory))
+    """Get existing Python paths staged or changed from origin/master."""
+    project_directory = os.path.abspath(project_directory)
+    subprocess.check_call(['git', '-C', project_directory, 'fetch', 'origin'])
     return frozenset(
-        os.path.abspath(path)
+        os.path.join(project_directory, path)
         for diff in ('--staged', 'origin/master...')
         for path in subprocess.check_output(
-            diff_cmd.format(diff),
-            shell=True
-        ).decode('utf-8').strip().splitlines()
+            ['git', '-C', project_directory, 'diff', diff, '--find-renames',
+             '--diff-filter=ACMR', '--name-only', '-z']
+        ).decode('utf-8').split('\0')
         if os.path.splitext(path)[-1] == '.py'
     )
 
