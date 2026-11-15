@@ -12,7 +12,8 @@ def git(directory, *arguments):
 
 def make_repo(tmpdir):
     source = tmpdir.mkdir('source')
-    git(source, 'init', '-b', 'master')
+    git(source, 'init')
+    git(source, 'symbolic-ref', 'HEAD', 'refs/heads/master')
     git(source, 'config', 'user.name', 'Bellybutton Test')
     git(source, 'config', 'user.email', 'test@example.invalid')
 
