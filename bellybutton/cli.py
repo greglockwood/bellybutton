@@ -115,15 +115,17 @@ def get_git_modified(project_directory):
     """Get existing Python paths staged or changed from origin/master."""
     project_directory = os.path.abspath(project_directory)
     subprocess.check_call(['git', '-C', project_directory, 'fetch', 'origin'])
-    return frozenset(
-        os.path.join(project_directory, path)
-        for diff in ('--staged', 'origin/master...')
-        for path in subprocess.check_output(
+    paths = set()
+    for diff in ('--staged', 'origin/master...'):
+        names = subprocess.check_output(
             ['git', '-C', project_directory, 'diff', diff, '--find-renames',
-             '--diff-filter=ACMR', '--name-only', '-z']
-        ).decode('utf-8').split('\0')
-        if os.path.splitext(path)[-1] == '.py'
-    )
+             '--diff-filter=ACMRT', '--name-only', '--relative', '-z']
+        )
+        for name in names.split(b'\0'):
+            path = os.fsdecode(name) if hasattr(os, 'fsdecode') else name
+            if os.path.splitext(path)[-1] == '.py':
+                paths.add(os.path.join(project_directory, path))
+    return frozenset(paths)
 
 
 def linting_failures(filepaths, rules):
