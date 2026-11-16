@@ -119,7 +119,7 @@ def get_git_modified(project_directory):
     for diff in ('--staged', 'origin/master...'):
         names = subprocess.check_output(
             ['git', '-C', project_directory, 'diff', diff, '--find-renames',
-             '--diff-filter=ACMRT', '--name-only', '--relative', '-z']
+             '--diff-filter=ACMRTU', '--name-only', '--relative', '-z']
         )
         for name in names.split(b'\0'):
             path = os.fsdecode(name) if hasattr(os, 'fsdecode') else name

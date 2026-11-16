@@ -56,7 +56,7 @@ def test_modified_only_lints_rename_destination_and_skips_deleted_path(tmpdir, c
         str(work.join('new.py')), str(work.join('changed.py'))
     }
     assert cli.lint(modified_only=True, project_directory=str(work)) == 1
-    assert 'new.py:1\tNoPrint' in capsys.readouterr().out
+    assert 'new.py:1\tNoPrint' in capsys.readouterr()[0]
 
 
 def test_modified_only_includes_branch_commits_relative_to_base(tmpdir):
@@ -96,6 +96,27 @@ def test_modified_only_includes_type_changed_python_files(tmpdir):
     git(work, 'add', 'linked.py')
 
     assert cli.get_git_modified(str(work)) == {str(work.join('linked.py'))}
+
+
+def test_modified_only_includes_unmerged_python_files(tmpdir):
+    work = make_repo(tmpdir)
+    work.join('changed.py').write('value = 2\n')
+    git(work, 'add', 'changed.py')
+    git(work, 'commit', '-m', 'Change feature value')
+
+    source = tmpdir.join('source')
+    source.join('changed.py').write('value = 3\n')
+    git(source, 'add', 'changed.py')
+    git(source, 'commit', '-m', 'Change master value')
+    git(source, 'remote', 'add', 'origin', str(tmpdir.join('remote.git')))
+    git(source, 'push', 'origin', 'master')
+
+    git(work, 'fetch', 'origin')
+    git(work, 'checkout', 'master')
+    git(work, 'reset', '--hard', 'origin/master')
+    assert subprocess.call(['git', '-C', str(work), 'merge', 'feature']) != 0
+
+    assert cli.get_git_modified(str(work)) == {str(work.join('changed.py'))}
 
 
 def test_modified_only_decodes_non_utf8_git_names(tmpdir, monkeypatch):
