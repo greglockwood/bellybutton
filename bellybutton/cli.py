@@ -111,9 +111,21 @@ def open_python_files(filepaths):
         yield filepath, contents
 
 
+def _decode_git_path(path):
+    if not isinstance(path, bytes):
+        return path
+    decoder = getattr(os, 'fsdecode', None)
+    if decoder is not None:
+        return decoder(path)
+    try:
+        return path.decode(sys.getfilesystemencoding())
+    except UnicodeDecodeError:
+        return path
+
+
 def get_git_modified(project_directory):
     """Get existing Python paths staged or changed from origin/master."""
-    project_directory = os.path.abspath(project_directory)
+    project_directory = _decode_git_path(os.path.abspath(project_directory))
     subprocess.check_call(['git', '-C', project_directory, 'fetch', 'origin'])
     paths = set()
     for diff in ('--staged', 'origin/master...'):
@@ -122,8 +134,8 @@ def get_git_modified(project_directory):
              '--diff-filter=ACMRTU', '--name-only', '--relative', '-z']
         )
         for name in names.split(b'\0'):
-            path = os.fsdecode(name) if hasattr(os, 'fsdecode') else name
-            if os.path.splitext(path)[-1] == '.py':
+            path = _decode_git_path(name)
+            if os.path.splitext(path)[-1] in ('.py', b'.py'):
                 paths.add(os.path.join(project_directory, path))
     return frozenset(paths)
 

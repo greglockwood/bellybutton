@@ -127,3 +127,11 @@ def test_modified_only_decodes_non_utf8_git_names(tmpdir, monkeypatch):
     )
 
     assert cli.get_git_modified(str(tmpdir)) == {str(tmpdir.join('good.py'))}
+
+
+def test_python_two_fallback_decodes_valid_unicode_names(monkeypatch):
+    monkeypatch.setattr(cli.os, 'fsdecode', None)
+    monkeypatch.setattr(cli.sys, 'getfilesystemencoding', lambda: 'utf-8')
+
+    assert cli._decode_git_path(b'caf\xc3\xa9.py') == u'caf\u00e9.py'
+    assert cli._decode_git_path(b'notes_\xff.txt') == b'notes_\xff.txt'
