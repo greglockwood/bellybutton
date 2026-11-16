@@ -126,6 +126,8 @@ def _decode_git_path(path):
 def get_git_modified(project_directory):
     """Get existing Python paths staged or changed from origin/master."""
     project_directory = _decode_git_path(os.path.abspath(project_directory))
+    if isinstance(project_directory, bytes):
+        raise UnicodeError('Cannot decode project directory {}'.format(repr(project_directory)))
     subprocess.check_call(['git', '-C', project_directory, 'fetch', 'origin'])
     paths = set()
     for diff in ('--staged', 'origin/master...'):
@@ -136,6 +138,8 @@ def get_git_modified(project_directory):
         for name in names.split(b'\0'):
             path = _decode_git_path(name)
             if os.path.splitext(path)[-1] in ('.py', b'.py'):
+                if isinstance(path, bytes):
+                    raise UnicodeError('Cannot decode modified Python path {}'.format(repr(path)))
                 paths.add(os.path.join(project_directory, path))
     return frozenset(paths)
 
@@ -203,7 +207,11 @@ def lint(modified_only=False, project_directory='.', verbose=False):
 
     failures = 0
     filepath_source = get_git_modified if modified_only else walk_python_files
-    filepaths = list(filepath_source(os.path.abspath(project_directory)))
+    try:
+        filepaths = list(filepath_source(os.path.abspath(project_directory)))
+    except UnicodeError as exc:
+        print(error('ERROR: {}'.format(exc)))
+        return 1
     for failure in linting_failures(filepaths, rules):
         failures += 1
         print(failure_message.format(

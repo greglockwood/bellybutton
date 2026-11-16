@@ -130,8 +130,23 @@ def test_modified_only_decodes_non_utf8_git_names(tmpdir, monkeypatch):
 
 
 def test_python_two_fallback_decodes_valid_unicode_names(monkeypatch):
-    monkeypatch.setattr(cli.os, 'fsdecode', None)
+    monkeypatch.setattr(cli.os, 'fsdecode', None, raising=False)
     monkeypatch.setattr(cli.sys, 'getfilesystemencoding', lambda: 'utf-8')
 
     assert cli._decode_git_path(b'caf\xc3\xa9.py') == u'caf\u00e9.py'
     assert cli._decode_git_path(b'notes_\xff.txt') == b'notes_\xff.txt'
+
+
+def test_python_two_fallback_fails_lint_for_undecodable_python_path(
+        tmpdir, monkeypatch, capsys):
+    work = make_repo(tmpdir)
+    monkeypatch.setattr(cli.os, 'fsdecode', None, raising=False)
+    monkeypatch.setattr(cli.sys, 'getfilesystemencoding', lambda: 'utf-8')
+    monkeypatch.setattr(cli.subprocess, 'check_call', lambda _: None)
+    monkeypatch.setattr(
+        cli.subprocess, 'check_output',
+        lambda _: b'bad_\xff.py\0'
+    )
+
+    assert cli.lint(modified_only=True, project_directory=str(work)) == 1
+    assert 'Cannot decode modified Python path' in capsys.readouterr()[0]
